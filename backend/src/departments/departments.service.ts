@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { QueryFailedError, Repository } from 'typeorm';
-
+import { UpdateDepartmentDto } from './dto/update-department.dto.js';
 import { Department } from './department.entity.js';
 import { CreateDepartmentDto } from './dto/create-department.dto.js';
 
@@ -50,5 +50,38 @@ export class DepartmentsService {
     }
 
     return department;
+  }
+
+  async update(
+    id: number,
+    updateDepartmentDto: UpdateDepartmentDto,
+  ): Promise<Department> {
+    const department = await this.findOne(id);
+
+    Object.assign(department, updateDepartmentDto);
+
+    try {
+      return await this.departmentRepository.save(department);
+    } catch (error: unknown) {
+      if (
+        error instanceof QueryFailedError &&
+        (error as QueryFailedError & { driverError?: { code?: string } })
+          .driverError?.code === '23505'
+      ) {
+        throw new ConflictException(
+          'A department with this code or name already exists',
+        );
+      }
+
+      throw error;
+    }
+  }
+
+  async deactivate(id: number): Promise<Department> {
+    const department = await this.findOne(id);
+
+    department.isActive = false;
+
+    return this.departmentRepository.save(department);
   }
 }

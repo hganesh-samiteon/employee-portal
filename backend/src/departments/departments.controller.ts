@@ -5,6 +5,7 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Patch,
 } from '@nestjs/common';
 
 import { CreateDepartmentDto } from './dto/create-department.dto.js';
@@ -27,5 +28,18 @@ export class DepartmentsController {
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.departmentsService.findOne(id);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateDepartmentDto: CreateDepartmentDto,
+  ) {
+    return this.departmentsService.update(id, updateDepartmentDto);
+  }
+
+  @Patch(':id/deactivate')
+  deactivate(@Param('id', ParseIntPipe) id: number) {
+    return this.departmentsService.deactivate(id);
   }
 }
