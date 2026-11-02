@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { DataSource } from 'typeorm';
-
+import { Holiday } from './holidays/holiday.entity.js';
 import { Department } from './departments/department.entity.js';
 import { Designation } from './designations/designations.entity.js';
 import { Employee } from './employees/employee.entity.js';
@@ -13,7 +13,7 @@ export default new DataSource({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE,
 
-  entities: [Department, Designation, Employee],
+  entities: [Department, Designation, Employee, Holiday],
 
   migrations: ['src/migrations/*.ts'],
 
