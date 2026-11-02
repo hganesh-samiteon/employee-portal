@@ -5,6 +5,7 @@ import { Department } from './departments/department.entity.js';
 import { Designation } from './designations/designations.entity.js';
 import { LeaveType } from './leave-types/leave-type.entity.js';
 import { Employee } from './employees/employee.entity.js';
+import { LeavePolicyConfiguration } from './leave-policy-configurations/leave-policy-configuration.entity.js';
 
 export default new DataSource({
   type: 'postgres',
@@ -14,7 +15,14 @@ export default new DataSource({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE,
 
-  entities: [Department, Designation, Employee, Holiday, LeaveType],
+  entities: [
+    Department,
+    Designation,
+    Employee,
+    Holiday,
+    LeaveType,
+    LeavePolicyConfiguration,
+  ],
 
   migrations: ['src/migrations/*.ts'],
 
