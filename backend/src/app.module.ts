@@ -8,6 +8,7 @@ import { DesignationsModule } from './designations/designations.module.js';
 import { EmployeesModule } from './employees/employees.module.js';
 import { HolidaysModule } from './holidays/holidays.module.js';
 import { LeaveTypesModule } from './leave-types/leave-types.module.js';
+import { LeavePolicyConfigurationsModule } from './leave-policy-configurations/leave-policy-configurations.module.js';
 
 @Module({
   imports: [
@@ -40,6 +41,8 @@ import { LeaveTypesModule } from './leave-types/leave-types.module.js';
     HolidaysModule,
 
     LeaveTypesModule,
+
+    LeavePolicyConfigurationsModule,
   ],
   controllers: [AppController],
   providers: [],
