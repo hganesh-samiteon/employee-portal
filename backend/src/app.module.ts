@@ -6,6 +6,8 @@ import { AppController } from './app.controller.js';
 import { DepartmentsModule } from './departments/departments.module.js';
 import { DesignationsModule } from './designations/designations.module.js';
 import { EmployeesModule } from './employees/employees.module.js';
+import { HolidaysModule } from './holidays/holidays.module.js';
+import { LeaveTypesModule } from './leave-types/leave-types.module.js';
 
 @Module({
   imports: [
@@ -34,6 +36,10 @@ import { EmployeesModule } from './employees/employees.module.js';
     DesignationsModule,
 
     EmployeesModule,
+
+    HolidaysModule,
+
+    LeaveTypesModule,
   ],
   controllers: [AppController],
   providers: [],
