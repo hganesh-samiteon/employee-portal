@@ -235,8 +235,8 @@ export class LeavePolicyConfigurationsService {
     const newEnd = dto.effectiveTo ?? `${dto.policyYear}-12-31`;
 
     query.andWhere(
-      `policy.effective_from <= :newEnd
-       AND COALESCE(policy.effective_to, :yearEnd) >= :newStart`,
+      `"policy"."effectiveFrom" <= :newEnd
+       AND COALESCE("policy"."effectiveTo", :yearEnd) >= :newStart`,
       {
         newStart,
         newEnd,
