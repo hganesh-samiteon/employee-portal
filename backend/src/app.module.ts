@@ -10,6 +10,7 @@ import { HolidaysModule } from './holidays/holidays.module.js';
 import { LeaveTypesModule } from './leave-types/leave-types.module.js';
 import { LeavePolicyConfigurationsModule } from './leave-policy-configurations/leave-policy-configurations.module.js';
 import { CompOffEligibilityModule } from './comp-off-eligibility/comp-off-eligibility.module.js';
+import { CompOffCreditsModule } from './comp-off-credits/comp-off-credits.module.js';
 
 @Module({
   imports: [
@@ -46,6 +47,8 @@ import { CompOffEligibilityModule } from './comp-off-eligibility/comp-off-eligib
     LeavePolicyConfigurationsModule,
 
     CompOffEligibilityModule,
+
+    CompOffCreditsModule,
   ],
   controllers: [AppController],
   providers: [],
