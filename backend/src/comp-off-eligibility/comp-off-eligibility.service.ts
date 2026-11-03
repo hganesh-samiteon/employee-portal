@@ -9,6 +9,7 @@ import {
 import { CompOffEligibility } from './comp-off-eligibility.entity.js';
 import { Department } from '../departments/department.entity.js';
 import { Designation } from '../designations/designations.entity.js';
+import { CreateCompOffEligibilityDto } from './dto/create-comp-off-eligibility.dto.js';
 
 @Injectable()
 export class CompOffEligibilityService {
@@ -71,5 +72,62 @@ export class CompOffEligibilityService {
         'An active eligibility rule already exists for this scope during the specified date range',
       );
     }
+  }
+
+  async create(dto: CreateCompOffEligibilityDto) {
+    const {
+      departmentId,
+      designationId,
+      isEligible,
+      effectiveFrom,
+      effectiveTo,
+    } = dto;
+
+    this.validateEffectiveDates(effectiveFrom, effectiveTo);
+
+    let department: Department | null = null;
+    let designation: Designation | null = null;
+
+    if (departmentId !== undefined) {
+      department = await this.departmentRepository.findOne({
+        where: { id: departmentId, isActive: true },
+      });
+
+      if (!department) {
+        throw new NotFoundException(
+          `Active department with ID ${departmentId} not found`,
+        );
+      }
+    }
+
+    if (designationId !== undefined) {
+      designation = await this.designationRepository.findOne({
+        where: { id: designationId, isActive: true },
+      });
+
+      if (!designation) {
+        throw new NotFoundException(
+          `Active designation with ID ${designationId} not found`,
+        );
+      }
+    }
+
+    await this.validateNoOverlappingRule(
+      departmentId ?? null,
+      designationId ?? null,
+      effectiveFrom,
+      effectiveTo,
+    );
+
+    const rule = this.compOffEligibilityRepository.create({
+      department,
+      designation,
+      isEligible,
+      effectiveFrom,
+      effectiveTo: effectiveTo ?? null,
+      isActive: true,
+    });
+
+    return this.compOffEligibilityRepository.save(rule);
   }
 }
