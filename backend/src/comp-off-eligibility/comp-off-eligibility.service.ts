@@ -130,4 +130,34 @@ export class CompOffEligibilityService {
 
     return this.compOffEligibilityRepository.save(rule);
   }
+
+  async findAll() {
+    return this.compOffEligibilityRepository.find({
+      relations: {
+        department: true,
+        designation: true,
+      },
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+  }
+
+  async findOne(id: number) {
+    const rule = await this.compOffEligibilityRepository.findOne({
+      where: { id },
+      relations: {
+        department: true,
+        designation: true,
+      },
+    });
+
+    if (!rule) {
+      throw new NotFoundException(
+        `Comp-Off eligibility rule with ID ${id} not found`,
+      );
+    }
+
+    return rule;
+  }
 }
