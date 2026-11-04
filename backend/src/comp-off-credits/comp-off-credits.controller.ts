@@ -9,6 +9,7 @@ import {
 
 import { CompOffCreditsService } from './comp-off-credits.service.js';
 import { CreateCompOffCreditDto } from './dto/create-comp-off-credit.dto.js';
+import { UseCompOffCreditDto } from './dto/use-comp-off-credit.dto.js';
 
 @Controller('comp-off-credits')
 export class CompOffCreditsController {
@@ -29,5 +30,18 @@ export class CompOffCreditsController {
     @Param('employeeId', ParseIntPipe) employeeId: number,
   ) {
     return this.compOffCreditsService.getEmployeeTransactions(employeeId);
+  }
+
+  @Post('employee/:employeeId/use')
+  useCompOffCredit(
+    @Param('employeeId', ParseIntPipe) employeeId: number,
+    @Body() dto: UseCompOffCreditDto,
+  ) {
+    return this.compOffCreditsService.useCompOffCredit(employeeId, dto);
+  }
+
+  @Post('process-expired')
+  processExpiredCredits() {
+    return this.compOffCreditsService.processExpiredCredits();
   }
 }

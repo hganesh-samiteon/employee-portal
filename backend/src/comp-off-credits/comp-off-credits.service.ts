@@ -24,9 +24,13 @@ export class CompOffCreditsService {
 
   async createCredit(dto: CreateCompOffCreditDto) {
     // 1. Validate approved working hours
-    if (dto.approvedHours > 24) {
+    if (
+      !Number.isFinite(dto.approvedHours) ||
+      dto.approvedHours <= 0 ||
+      dto.approvedHours > 24
+    ) {
       throw new BadRequestException(
-        'Approved hours cannot exceed 24 hours per day',
+        'Approved hours must be greater than 0 and cannot exceed 24',
       );
     }
 
@@ -43,12 +47,12 @@ export class CompOffCreditsService {
       const transactionRepository = manager.getRepository(CompOffTransaction);
 
       // Validate employee
-      const employee = await employeeRepository.findOne({
-        where: {
-          id: dto.employeeId,
-          isActive: true,
-        },
-      });
+      const employee = await employeeRepository
+        .createQueryBuilder('employee')
+        .setLock('pessimistic_write')
+        .where('employee.id = :employeeId', { employeeId: dto.employeeId })
+        .andWhere('employee.is_active = true')
+        .getOne();
 
       if (!employee) {
         throw new NotFoundException(
@@ -132,6 +136,7 @@ export class CompOffCreditsService {
       // 2. Calculate balance from ledger entries
       const result = await transactionRepository
         .createQueryBuilder('transaction')
+        .innerJoin('transaction.credit', 'credit')
         .select(
           `
         COALESCE(
@@ -152,6 +157,7 @@ export class CompOffCreditsService {
         .where('transaction.employee_id = :employeeId', {
           employeeId,
         })
+        .andWhere('credit.expires_at >= CURRENT_DATE')
         .setParameters({
           credit: CompOffTransactionType.CREDIT,
           deductions: [
@@ -165,7 +171,9 @@ export class CompOffCreditsService {
         employeeId: employee.id,
         employeeCode: employee.employeeCode,
         employeeName: `${employee.firstName} ${employee.lastName}`,
-        availableBalance: Number(result?.balance ?? 0).toFixed(4),
+        availableBalance: this.unitsToDecimal(
+          this.decimalToUnits(result?.balance ?? '0'),
+        ),
       };
     });
   }
@@ -209,18 +217,29 @@ export class CompOffCreditsService {
     };
   }
   async useCompOffCredit(employeeId: number, dto: UseCompOffCreditDto) {
+    if (
+      !Number.isFinite(dto.days) ||
+      dto.days <= 0 ||
+      !Number.isInteger(dto.days * 10000)
+    ) {
+      throw new BadRequestException(
+        'Requested Comp-Off days must be positive and have at most 4 decimal places',
+      );
+    }
+    const requestedUnits = Math.round(dto.days * 10000);
+
     return this.dataSource.transaction(async (manager) => {
       const employeeRepository = manager.getRepository(Employee);
       const creditRepository = manager.getRepository(CompOffCredit);
       const transactionRepository = manager.getRepository(CompOffTransaction);
 
       // 1. Validate employee
-      const employee = await employeeRepository.findOne({
-        where: {
-          id: employeeId,
-          isActive: true,
-        },
-      });
+      const employee = await employeeRepository
+        .createQueryBuilder('employee')
+        .setLock('pessimistic_write')
+        .where('employee.id = :employeeId', { employeeId })
+        .andWhere('employee.is_active = true')
+        .getOne();
 
       if (!employee) {
         throw new NotFoundException(
@@ -242,7 +261,7 @@ export class CompOffCreditsService {
         .getMany();
 
       // 3. Calculate remaining balance for each credit
-      let remainingDays = dto.days;
+      let remainingUnits = requestedUnits;
 
       const usageEntries: CompOffTransaction[] = [];
 
@@ -278,34 +297,41 @@ export class CompOffCreditsService {
           })
           .getRawOne<{ balance: string }>();
 
-        const availableDays = Number(ledgerResult?.balance ?? 0);
+        const availableUnits = this.decimalToUnits(
+          ledgerResult?.balance ?? '0',
+        );
 
-        if (availableDays <= 0) {
+        if (availableUnits <= 0) {
           continue;
         }
 
-        const daysToUse = Math.min(availableDays, remainingDays);
+        const unitsToUse = Math.min(availableUnits, remainingUnits);
 
         const usageEntry = transactionRepository.create({
           employee,
           credit,
           transactionType: CompOffTransactionType.USAGE,
-          days: daysToUse.toFixed(4),
+          days: this.unitsToDecimal(unitsToUse),
           referenceId: null,
           remarks: dto.remarks ?? 'Comp-Off utilized',
         });
 
         usageEntries.push(usageEntry);
 
-        remainingDays = Number((remainingDays - daysToUse).toFixed(4));
+        remainingUnits -= unitsToUse;
 
-        if (remainingDays <= 0) {
+        if (availableUnits === unitsToUse) {
+          credit.status = CompOffCreditStatus.EXHAUSTED;
+          await creditRepository.save(credit);
+        }
+
+        if (remainingUnits <= 0) {
           break;
         }
       }
 
       // 4. Reject if sufficient balance is unavailable
-      if (remainingDays > 0) {
+      if (remainingUnits > 0) {
         throw new ConflictException('Insufficient Comp-Off balance');
       }
 
@@ -319,6 +345,142 @@ export class CompOffCreditsService {
         requestedDays: dto.days.toFixed(4),
         consumedDays: dto.days.toFixed(4),
         transactions: usageEntries.map((entry) => ({
+          creditId: entry.credit.id,
+          days: entry.days,
+          transactionType: entry.transactionType,
+        })),
+      };
+    });
+  }
+
+  private decimalToUnits(value: string): number {
+    const normalized = value.trim();
+    const [whole = '0', fraction = ''] = normalized.split('.');
+    return Number(whole) * 10000 + Number(fraction.padEnd(4, '0').slice(0, 4));
+  }
+
+  private unitsToDecimal(units: number): string {
+    const whole = Math.floor(units / 10000);
+    const fraction = String(units % 10000).padStart(4, '0');
+    return `${whole}.${fraction}`;
+  }
+
+  async processExpiredCredits() {
+    return this.dataSource.transaction(async (manager) => {
+      const employeeRepository = manager.getRepository(Employee);
+      const creditRepository = manager.getRepository(CompOffCredit);
+      const transactionRepository = manager.getRepository(CompOffTransaction);
+
+      // 1. Find employees who have expired active credits.
+      const employees = await employeeRepository
+        .createQueryBuilder('employee')
+        .where('employee.is_active = true')
+        .andWhere(
+          `EXISTS (
+          SELECT 1
+          FROM comp_off_credits credit
+          WHERE credit.employee_id = employee.id
+          AND credit.expires_at < CURRENT_DATE
+          AND credit.status = :status
+        )`,
+          { status: CompOffCreditStatus.ACTIVE },
+        )
+        .orderBy('employee.id', 'ASC')
+        .getMany();
+
+      const expiryEntries: CompOffTransaction[] = [];
+
+      for (const employee of employees) {
+        // 2. Acquire the shared employee-level lock.
+        await employeeRepository
+          .createQueryBuilder('employee')
+          .setLock('pessimistic_write')
+          .where('employee.id = :employeeId', {
+            employeeId: employee.id,
+          })
+          .getOne();
+
+        // 3. Lock expired credits in this employee's account.
+        const expiredCredits = await creditRepository
+          .createQueryBuilder('credit')
+          .setLock('pessimistic_write')
+          .where('credit.employee_id = :employeeId', {
+            employeeId: employee.id,
+          })
+          .andWhere('credit.expires_at < CURRENT_DATE')
+          .andWhere('credit.status = :status', {
+            status: CompOffCreditStatus.ACTIVE,
+          })
+          .orderBy('credit.expires_at', 'ASC')
+          .addOrderBy('credit.id', 'ASC')
+          .getMany();
+
+        for (const credit of expiredCredits) {
+          // 4. Calculate remaining balance from the ledger.
+          const ledgerResult = await transactionRepository
+            .createQueryBuilder('transaction')
+            .select(
+              `
+            COALESCE(
+              SUM(
+                CASE
+                  WHEN transaction.transactionType = :credit
+                    THEN transaction.days
+                  WHEN transaction.transactionType IN (:...deductions)
+                    THEN -transaction.days
+                  ELSE 0
+                END
+              ),
+              0
+            )
+            `,
+              'balance',
+            )
+            .where('transaction.credit_id = :creditId', {
+              creditId: credit.id,
+            })
+            .setParameters({
+              credit: CompOffTransactionType.CREDIT,
+              deductions: [
+                CompOffTransactionType.USAGE,
+                CompOffTransactionType.EXPIRY,
+              ],
+            })
+            .getRawOne<{ balance: string }>();
+
+          const remainingUnits = this.decimalToUnits(
+            ledgerResult?.balance ?? '0',
+          );
+
+          // 5. Record unused balance as an EXPIRY transaction.
+          if (remainingUnits > 0) {
+            const expiryEntry = transactionRepository.create({
+              employee,
+              credit,
+              transactionType: CompOffTransactionType.EXPIRY,
+              days: this.unitsToDecimal(remainingUnits),
+              referenceId: null,
+              remarks: 'Comp-Off credit expired',
+            });
+
+            expiryEntries.push(expiryEntry);
+          }
+
+          // 6. Mark the credit as expired.
+          credit.status = CompOffCreditStatus.EXPIRED;
+          await creditRepository.save(credit);
+        }
+      }
+
+      // 7. Save all expiry transactions.
+      if (expiryEntries.length > 0) {
+        await transactionRepository.save(expiryEntries);
+      }
+
+      return {
+        message: 'Comp-Off expiry processing completed',
+        expiredCredits: expiryEntries.length,
+        transactions: expiryEntries.map((entry) => ({
           creditId: entry.credit.id,
           days: entry.days,
           transactionType: entry.transactionType,

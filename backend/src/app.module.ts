@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ScheduleModule } from '@nestjs/schedule';
 
 import { AppController } from './app.controller.js';
 import { DepartmentsModule } from './departments/departments.module.js';
@@ -33,21 +34,15 @@ import { CompOffCreditsModule } from './comp-off-credits/comp-off-credits.module
         synchronize: false,
       }),
     }),
+    ScheduleModule.forRoot(),
 
     DepartmentsModule,
-
     DesignationsModule,
-
     EmployeesModule,
-
     HolidaysModule,
-
     LeaveTypesModule,
-
     LeavePolicyConfigurationsModule,
-
     CompOffEligibilityModule,
-
     CompOffCreditsModule,
   ],
   controllers: [AppController],
