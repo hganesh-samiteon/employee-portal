@@ -107,4 +107,64 @@ export class CompOffCreditsService {
       String(expiryDay).padStart(2, '0'),
     ].join('-');
   }
+
+  async getEmployeeBalance(employeeId: number) {
+    return this.dataSource.transaction(async (manager) => {
+      const employeeRepository = manager.getRepository(Employee);
+      const transactionRepository = manager.getRepository(CompOffTransaction);
+
+      // 1. Verify employee exists
+      const employee = await employeeRepository.findOne({
+        where: {
+          id: employeeId,
+          isActive: true,
+        },
+      });
+
+      if (!employee) {
+        throw new NotFoundException(
+          `Active employee with ID ${employeeId} not found`,
+        );
+      }
+
+      // 2. Calculate balance from ledger entries
+      const result = await transactionRepository
+        .createQueryBuilder('transaction')
+        .select(
+          `
+        COALESCE(
+          SUM(
+            CASE
+              WHEN transaction.transactionType = :credit
+                THEN transaction.days
+              WHEN transaction.transactionType IN (:...deductions)
+                THEN -transaction.days
+              ELSE 0
+            END
+          ),
+          0
+        )
+        `,
+          'balance',
+        )
+        .where('transaction.employee_id = :employeeId', {
+          employeeId,
+        })
+        .setParameters({
+          credit: CompOffTransactionType.CREDIT,
+          deductions: [
+            CompOffTransactionType.USAGE,
+            CompOffTransactionType.EXPIRY,
+          ],
+        })
+        .getRawOne<{ balance: string }>();
+
+      return {
+        employeeId: employee.id,
+        employeeCode: employee.employeeCode,
+        employeeName: `${employee.firstName} ${employee.lastName}`,
+        availableBalance: Number(result?.balance ?? 0).toFixed(4),
+      };
+    });
+  }
 }
