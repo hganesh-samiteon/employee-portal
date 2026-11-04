@@ -1,4 +1,11 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+} from '@nestjs/common';
 
 import { CompOffCreditsService } from './comp-off-credits.service.js';
 import { CreateCompOffCreditDto } from './dto/create-comp-off-credit.dto.js';
@@ -10,5 +17,17 @@ export class CompOffCreditsController {
   @Post()
   createCredit(@Body() dto: CreateCompOffCreditDto) {
     return this.compOffCreditsService.createCredit(dto);
+  }
+
+  @Get('employee/:employeeId/balance')
+  getEmployeeBalance(@Param('employeeId', ParseIntPipe) employeeId: number) {
+    return this.compOffCreditsService.getEmployeeBalance(employeeId);
+  }
+
+  @Get('employee/:employeeId/transactions')
+  getEmployeeTransactions(
+    @Param('employeeId', ParseIntPipe) employeeId: number,
+  ) {
+    return this.compOffCreditsService.getEmployeeTransactions(employeeId);
   }
 }
