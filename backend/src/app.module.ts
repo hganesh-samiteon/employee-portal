@@ -12,6 +12,7 @@ import { LeaveTypesModule } from './leave-types/leave-types.module.js';
 import { LeavePolicyConfigurationsModule } from './leave-policy-configurations/leave-policy-configurations.module.js';
 import { CompOffEligibilityModule } from './comp-off-eligibility/comp-off-eligibility.module.js';
 import { CompOffCreditsModule } from './comp-off-credits/comp-off-credits.module.js';
+import { LeaveRequestsModule } from './leave-requests/leave-requests.module.js';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { CompOffCreditsModule } from './comp-off-credits/comp-off-credits.module
     LeavePolicyConfigurationsModule,
     CompOffEligibilityModule,
     CompOffCreditsModule,
+    LeaveRequestsModule,
   ],
   controllers: [AppController],
   providers: [],

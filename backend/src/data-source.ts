@@ -9,6 +9,7 @@ import { CompOffEligibility } from './comp-off-eligibility/comp-off-eligibility.
 import { LeavePolicyConfiguration } from './leave-policy-configurations/leave-policy-configuration.entity.js';
 import { CompOffCredit } from './comp-off-credits/comp-off-credit.entity.js';
 import { CompOffTransaction } from './comp-off-credits/comp-off-transaction.entity.js';
+import { LeaveRequest } from './leave-requests/leave-request.entity.js';
 
 export default new DataSource({
   type: 'postgres',
@@ -28,6 +29,7 @@ export default new DataSource({
     CompOffEligibility,
     CompOffCredit,
     CompOffTransaction,
+    LeaveRequest,
   ],
 
   migrations: ['src/migrations/*.ts'],
