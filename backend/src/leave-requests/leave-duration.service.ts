@@ -1,7 +1,14 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Between, Repository } from 'typeorm';
+import { Holiday } from '../holidays/holiday.entity.js';
 
 @Injectable()
 export class LeaveDurationService {
+  constructor(
+    @InjectRepository(Holiday)
+    private readonly holidayRepository: Repository<Holiday>,
+  ) {}
   calculateTotalDays(
     startDate: string,
     endDate: string,
@@ -106,5 +113,34 @@ export class LeaveDurationService {
     );
 
     return `${values.year}-${values.month}-${values.day}`;
+  }
+  private async getHolidayDates(
+    startDate: string,
+    endDate: string,
+  ): Promise<Set<string>> {
+    const holidays = await this.holidayRepository.find({
+      select: {
+        date: true,
+      },
+      where: {
+        date: Between(startDate, endDate),
+        isActive: true,
+      },
+    });
+
+    return new Set(holidays.map((holiday) => holiday.date));
+  }
+
+  async calculateLeaveDays(
+    startDate: string,
+    endDate: string,
+    isHalfDay: boolean,
+  ): Promise<number> {
+    // Validate before querying the database.
+    this.validateDateRange(startDate, endDate);
+
+    const holidayDates = await this.getHolidayDates(startDate, endDate);
+
+    return this.calculateTotalDays(startDate, endDate, isHalfDay, holidayDates);
   }
 }
