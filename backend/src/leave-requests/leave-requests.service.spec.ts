@@ -1,16 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { LeaveRequestsService } from './leave-requests.service.js';
+import { LeaveDurationService } from './leave-duration.service.js';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 describe('LeaveRequestsService', () => {
-  let service: LeaveRequestsService;
+  let service: LeaveDurationService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [LeaveRequestsService],
+      providers: [LeaveDurationService],
     }).compile();
 
-    service = module.get<LeaveRequestsService>(LeaveRequestsService);
+    service = module.get<LeaveDurationService>(LeaveDurationService);
   });
 
   it('should be defined', () => {
