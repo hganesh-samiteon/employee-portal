@@ -9,7 +9,9 @@ export class CompOffExpiryScheduler {
 
   constructor(private readonly compOffCreditsService: CompOffCreditsService) {}
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
+    timeZone: 'Asia/Kolkata',
+  })
   async handleCompOffExpiry() {
     this.logger.log('Starting daily Comp-Off expiry processing');
 

@@ -8,12 +8,16 @@ import {
 } from '@nestjs/common';
 
 import { CompOffCreditsService } from './comp-off-credits.service.js';
+// import { CompOffExpiryScheduler } from './comp-off-expiry.scheduler.js';
 import { CreateCompOffCreditDto } from './dto/create-comp-off-credit.dto.js';
 import { UseCompOffCreditDto } from './dto/use-comp-off-credit.dto.js';
 
 @Controller('comp-off-credits')
 export class CompOffCreditsController {
-  constructor(private readonly compOffCreditsService: CompOffCreditsService) {}
+  constructor(
+    private readonly compOffCreditsService: CompOffCreditsService
+    // private readonly compOffExpiryScheduler: CompOffExpiryScheduler,
+  ) {}
 
   @Post()
   createCredit(@Body() dto: CreateCompOffCreditDto) {
@@ -44,4 +48,13 @@ export class CompOffCreditsController {
   processExpiredCredits() {
     return this.compOffCreditsService.processExpiredCredits();
   }
+
+  // @Post('test-expiry-scheduler')
+  // async testExpiryScheduler() {
+  //   await this.compOffExpiryScheduler.handleCompOffExpiry();
+  //
+  //   return {
+  //     message: 'Comp-Off expiry scheduler triggered successfully',
+  //   };
+  // }
 }
